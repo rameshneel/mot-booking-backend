@@ -11,13 +11,9 @@ const app = express();
 app.use(
   cors({
     origin: [
-      "http://localhost:3000",
-      "https://localhost:5000",
       "http://localhost:5173",
+      "https://mot-booking.vercel.app",
       "https://www.sandbox.paypal.com",
-      "https://zacsgutters.vercel.app",
-      "https://high-oaks-media-crm.vercel.app",
-      "https://ferndale-autos-booking-frontend.vercel.app",
     ],
     credentials: true,
     secure: false,
