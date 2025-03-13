@@ -236,9 +236,9 @@ const createCustomer = asyncHandler(async (req, res, next) => {
       )}`;
       newCustomer.paypalOrderId = OrderId;
       await newCustomer.save();
-      await sendCustomerConfirmationEmailOnline(newCustomer);
-      // // Send notification email to the admin
-      await sendAdminNotificationEmailOnline(newCustomer);
+      // await sendCustomerConfirmationEmailOnline(newCustomer);
+      // // // Send notification email to the admin
+      // await sendAdminNotificationEmailOnline(newCustomer);
       return res.status(201).json(
         new ApiResponse(
           201,
