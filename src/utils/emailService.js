@@ -209,6 +209,158 @@ export const sendAdminNotificationEmail = async (
   await sendEmail(process.env.ADMIN_EMAIL, emailSubject, emailBody);
 };
 
+// Customer Confirmation Email (for MOT test online booking)
+export const sendCustomerConfirmationEmailOnline = async (customer) => {
+  const emailSubject = "Your MOT Test Booking Confirmation - Slot Reserved";
+  const emailBody = `
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>MOT Test Booking Confirmation</title>
+      <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #232e35; margin: 0; padding: 0; background-color: #01669A; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background-color: #232e35; color: #ffffff; padding: 20px; text-align: center; }
+        .content { background-color: #ffffff; padding: 20px; border-radius: 5px; }
+        .booking-details { background-color: #f0f0f0; border: 1px solid #e0e0e0; border-radius: 5px; padding: 15px; margin-top: 20px; }
+        .footer { margin-top: 20px; font-size: 12px; color: #888; text-align: center; }
+        .btn { display: inline-block; padding: 10px 20px; background-color: rgb(0, 1, 2); color: #FFFFFF; text-decoration: none; border-radius: 6px; font-weight: 500; }
+        .note { color: #D97706; font-style: italic; margin-top: 15px; font-weight: bold; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <h1>Your MOT Test Slot is Reserved!</h1>
+        </div>
+        <div class="content">
+          <p>Dear ${customer.firstName} ${customer.lastName},</p>
+          <p>Thank you for scheduling your MOT test with us online! Your slot has been successfully reserved.</p>
+          
+          <div class="booking-details">
+            <h2>MOT Test Details</h2>
+            <p><strong>Booking ID:</strong> ${customer.paypalOrderId}</p>
+            <p><strong>Date:</strong> ${formatDate(customer.selectedDate)}</p>
+            <p><strong>Time:</strong> ${customer.selectedTimeSlot}</p>
+            <p><strong>Vehicle:</strong> ${customer.makeAndModel} (${
+    customer.registrationNo
+  })</p>
+            <p><strong>Amount Due:</strong> ${formatCurrency(
+              customer.totalPrice
+            )}</p>
+            <p><strong>Payment Method:</strong> Cash </p>
+            <p><strong>Payment Status:</strong> Pending</p>
+            <p><strong>Booked By:</strong> You (Online MOT Booking)</p>
+          </div>
+          
+          <p class="note">Important: Please bring cash or card for payment on the day of your MOT test.</p>
+          
+          <p>To reschedule your MOT test or for any questions, please contact us:</p>
+          <p>
+            <a href="mailto:${
+              process.env.COMPANY_EMAIL
+            }" class="btn">Contact Us</a>
+            <span> or call ${process.env.COMPANY_PHONE}</span>
+          </p>
+        </div>
+        <div class="footer">
+          <p>© ${new Date().getFullYear()} ${
+    process.env.COMPANY_NAME
+  }. All rights reserved.</p>
+          <p>MOT Booking created on: ${formatDate(customer.createdAt)}</p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+
+  await sendEmail(customer.email, emailSubject, emailBody);
+};
+
+// Admin Notification Email (for MOT test online booking)
+export const sendAdminNotificationEmailOnline = async (customer) => {
+  const emailSubject = "New Online MOT Booking Alert: Slot Reserved";
+
+  const emailBody = `
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>MOT Booking Notification</title>
+      <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #232e35; margin: 0; padding: 0; background-color: #01669A; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background-color: #232e35; color: #ffffff; padding: 20px; text-align: center; }
+        .content { background-color: #ffffff; padding: 20px; border-radius: 5px; }
+        .section { margin-bottom: 20px; }
+        .footer { margin-top: 20px; font-size: 12px; color: #888; text-align: center; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 10px; text-align: left; border-bottom: 1px solid #ddd; }
+        th { background-color: #f2f2f2; }
+        .alert { color: #D97706; font-weight: bold; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <h1>New Online MOT Booking Notification</h1>
+        </div>
+        <div class="content">
+          <p class="alert">New MOT test slot reserved through Online Booking System</p>
+          
+          <div class="section">
+            <h2>Customer Information</h2>
+            <table>
+              <tr><th>Name</th><td>${customer.firstName} ${
+    customer.lastName
+  }</td></tr>
+              <tr><th>Email</th><td>${customer.email}</td></tr>
+              <tr><th>Phone</th><td>${customer.contactNumber || "N/A"}</td></tr>
+            </table>
+          </div>
+          
+          <div class="section">
+            <h2>MOT Test Details</h2>
+            <table>
+              <tr><th>Booking ID</th><td>${customer.paypalOrderId}</td></tr>
+              <tr><th>Date</th><td>${formatDate(
+                customer.selectedDate
+              )}</td></tr>
+              <tr><th>Time</th><td>${customer.selectedTimeSlot}</td></tr>
+              <tr><th>Vehicle</th><td>${customer.makeAndModel} (${
+    customer.registrationNo
+  })</td></tr>
+            </table>
+          </div>
+          
+          <div class="section">
+            <h2>Payment Information</h2>
+            <table>
+              <tr><th>Amount Due</th><td>${formatCurrency(
+                customer.totalPrice
+              )}</td></tr>
+              <tr><th>Method</th><td>Payment on the Day</td></tr>
+            </table>
+          </div>
+          
+          <p>MOT Booking created by: Customer (Online) on ${formatDate(
+            customer.createdAt
+          )}</p>
+        </div>
+        <div class="footer">
+          <p>Automated notification from MOT Online Booking System</p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+
+  await sendEmail(process.env.ADMIN_EMAIL, emailSubject, emailBody);
+};
+
 export const sendCustomerRefundEmail = async (customer, refundDetails) => {
   const emailSubject = "Your Refund Has Been Processed";
   const emailBody = `

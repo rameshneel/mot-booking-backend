@@ -9,6 +9,8 @@ import {
   sendAdminNotificationEmail,
   sendCustomerRefundEmail,
   sendAdminRefundNotificationEmail,
+  sendCustomerConfirmationEmailOnline,
+  sendAdminNotificationEmailOnline,
 } from "../utils/emailService.js";
 import TimeSlot from "../models/timeSlot.model.js";
 
@@ -131,7 +133,7 @@ const createCustomer = asyncHandler(async (req, res, next) => {
       throw new ApiError(400, "Required fields are missing.");
     }
     if (!totalPrice) {
-      throw new ApiError(400, "Required fields are missing 1233333.");
+      throw new ApiError(400, "Total price is required.");
     }
 
     const date = new Date(selectedDate);
@@ -145,7 +147,7 @@ const createCustomer = asyncHandler(async (req, res, next) => {
       throw new ApiError(400, "Bookings for today are not allowed.");
     }
 
-    // Ensure that selectedDate is a weekday (Monday to Friday)
+    // Ensure that selectedDate is a weekday (Tuesday to Saturday)
     const dayOfWeek = date.getDay();
     if (dayOfWeek === 0 || dayOfWeek === 1) {
       throw new ApiError(
@@ -179,9 +181,9 @@ const createCustomer = asyncHandler(async (req, res, next) => {
       awareOfCancellationPolicy,
       howDidYouHearAboutUs,
       paymentMethod,
-      bookedBy: "customer",
+      bookedBy: bookedBy || "customer",
     });
-    await newCustomer.save();
+
     // Update the time slot
     const slotIndex = timeSlot.slots.findIndex(
       (s) => s.time === selectedTimeSlot
@@ -196,8 +198,9 @@ const createCustomer = asyncHandler(async (req, res, next) => {
     }
 
     await timeSlot.save();
+    await newCustomer.save();
 
-    // Handle PayPal payment if applicable
+    // Handle payment method logic
     if (paymentMethod === "PayPal") {
       const order = await paypalService.createOrder(
         totalPrice,
@@ -227,17 +230,175 @@ const createCustomer = asyncHandler(async (req, res, next) => {
           "Proceed to PayPal payment"
         )
       );
-    }
-    // Success response
-    return res
-      .status(201)
-      .json(
-        new ApiResponse(201, { customer: newCustomer }, "Booking successful")
+    } else if (paymentMethod === "Cash") {
+      const OrderId = `CASH-ORD-${Date.now()}-${Math.floor(
+        Math.random() * 1000
+      )}`;
+      newCustomer.paypalOrderId = OrderId;
+      await newCustomer.save();
+      await sendCustomerConfirmationEmailOnline(newCustomer);
+      // // Send notification email to the admin
+      await sendAdminNotificationEmailOnline(newCustomer);
+      return res.status(201).json(
+        new ApiResponse(
+          201,
+          {
+            customer: newCustomer,
+            invoiceNumber: OrderId,
+            totalPrice: newCustomer.totalPrice,
+            email: newCustomer.email,
+          },
+          "Booking confirmed. Payment due in cash."
+        )
       );
+    } else {
+      throw new ApiError(400, "Invalid payment method specified.");
+    }
   } catch (error) {
     next(error);
   }
 });
+// const createCustomer = asyncHandler(async (req, res, next) => {
+//   try {
+//     const {
+//       firstName,
+//       lastName,
+//       email,
+//       contactNumber,
+//       selectedDate,
+//       totalPrice,
+//       selectedTimeSlot,
+//       makeAndModel,
+//       registrationNo,
+//       awareOfCancellationPolicy,
+//       howDidYouHearAboutUs,
+//       paymentMethod,
+//       bookedBy,
+//     } = req.body;
+//     console.log(req.body);
+
+//     // Validate required fields based on the schema
+//     if (
+//       !firstName ||
+//       !lastName ||
+//       !email ||
+//       !selectedDate ||
+//       !selectedTimeSlot ||
+//       !makeAndModel ||
+//       !registrationNo ||
+//       !howDidYouHearAboutUs ||
+//       !paymentMethod
+//     ) {
+//       throw new ApiError(400, "Required fields are missing.");
+//     }
+//     if (!totalPrice) {
+//       throw new ApiError(400, "Required fields are missing 1233333.");
+//     }
+
+//     const date = new Date(selectedDate);
+//     if (isNaN(date.getTime())) {
+//       throw new ApiError(400, "Invalid date format. Please use YYYY-MM-DD.");
+//     }
+
+//     const currentDate = new Date();
+//     currentDate.setHours(0, 0, 0, 0);
+//     if (date.toDateString() === currentDate.toDateString()) {
+//       throw new ApiError(400, "Bookings for today are not allowed.");
+//     }
+
+//     // Ensure that selectedDate is a weekday (Monday to Friday)
+//     const dayOfWeek = date.getDay();
+//     if (dayOfWeek === 0 || dayOfWeek === 1) {
+//       throw new ApiError(
+//         400,
+//         "Bookings are only allowed from Tuesday to Saturday."
+//       );
+//     }
+
+//     const formattedDate = date.toISOString().split("T")[0];
+//     let timeSlot = await TimeSlot.findOne({ date: formattedDate });
+//     if (timeSlot) {
+//       const slot = timeSlot.slots.find((s) => s.time === selectedTimeSlot);
+//       if (slot && (slot.blockedBy || slot.bookedBy)) {
+//         throw new ApiError(400, "The selected time slot is not available.");
+//       }
+//     } else {
+//       timeSlot = new TimeSlot({ date: formattedDate, slots: [] });
+//     }
+
+//     // Create and save new customer
+//     const newCustomer = new Customer({
+//       firstName,
+//       lastName,
+//       email,
+//       contactNumber,
+//       selectedDate: formattedDate,
+//       selectedTimeSlot,
+//       totalPrice,
+//       makeAndModel,
+//       registrationNo,
+//       awareOfCancellationPolicy,
+//       howDidYouHearAboutUs,
+//       paymentMethod,
+//       bookedBy: "customer",
+//     });
+//     await newCustomer.save();
+//     // Update the time slot
+//     const slotIndex = timeSlot.slots.findIndex(
+//       (s) => s.time === selectedTimeSlot
+//     );
+//     if (slotIndex !== -1) {
+//       timeSlot.slots[slotIndex].bookedBy = newCustomer._id;
+//     } else {
+//       timeSlot.slots.push({
+//         time: selectedTimeSlot,
+//         bookedBy: newCustomer._id,
+//       });
+//     }
+
+//     await timeSlot.save();
+
+//     // Handle PayPal payment if applicable
+//     if (paymentMethod === "PayPal") {
+//       const order = await paypalService.createOrder(
+//         totalPrice,
+//         {
+//           selectedDate,
+//           selectedTimeSlot,
+//           makeAndModel,
+//           registrationNo,
+//         },
+//         next
+//       );
+//       newCustomer.paypalOrderId = order.id;
+//       await newCustomer.save();
+
+//       const approvalUrl = order.links.find(
+//         (link) => link.rel === "approve"
+//       ).href;
+
+//       return res.status(200).json(
+//         new ApiResponse(
+//           200,
+//           {
+//             customer: newCustomer,
+//             paypalOrderId: order.id,
+//             approvalUrl: approvalUrl,
+//           },
+//           "Proceed to PayPal payment"
+//         )
+//       );
+//     }
+//     // Success response
+//     return res
+//       .status(201)
+//       .json(
+//         new ApiResponse(201, { customer: newCustomer }, "Booking successful")
+//       );
+//   } catch (error) {
+//     next(error);
+//   }
+// });
 const capturePayment = asyncHandler(async (req, res, next) => {
   const captureDetails = req.body;
   const { id: orderID, status, purchase_units } = captureDetails;
