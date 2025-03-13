@@ -1,7 +1,8 @@
 // src/utils/email.service.js
-
+import { config } from "dotenv";
 import nodemailer from "nodemailer";
-
+// Load environment variables
+config();
 // Email configuration
 const emailConfig = {
   host: process.env.EMAIL_HOST,
@@ -21,6 +22,26 @@ transporter.verify((error, success) => {
     console.log("SMTP connection is ready");
   }
 });
+
+// Send email function
+const sendEmail = async (to, subject, html) => {
+  const mailOptions = {
+    from: "Booking <ramesh@neelnetworks.com>",
+    to,
+    subject,
+    html,
+  };
+
+  try {
+    const info = await transporter.sendMail(mailOptions);
+    console.log("Email sent successfully:", info.messageId);
+    return info;
+  } catch (error) {
+    console.error("Error sending email:", error);
+    throw new Error("Failed to send email");
+  }
+};
+
 // Helper functions
 const formatCurrency = (amount) => {
   return new Intl.NumberFormat("en-GB", {
@@ -35,24 +56,6 @@ const formatDate = (dateString) => {
     month: "long",
     day: "numeric",
   });
-};
-// Send email function
-const sendEmail = async (to, subject, html) => {
-  const mailOptions = {
-    from: "Booking <ferndaleautos@gmail.com>",
-    to,
-    subject,
-    html,
-  };
-
-  try {
-    const info = await transporter.sendMail(mailOptions);
-    console.log("Email sent successfully:", info.messageId);
-    return info;
-  } catch (error) {
-    console.error("Error sending email:", error);
-    throw new Error("Failed to send email");
-  }
 };
 
 export const sendCustomerConfirmationEmail = async (
